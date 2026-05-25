@@ -3,13 +3,11 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell, PieChart, Pie
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts'
 import { 
-  Upload, Search, Filter, ArrowUpCircle, ArrowDownCircle, 
-  Wallet, Download, Calendar, LayoutDashboard, FileText, 
-  Trash2, Edit3, PiggyBank, ArrowRightLeft, Plus,
-  ListFilter
+  Upload, Search, Download, LayoutDashboard, FileText, 
+  Trash2, Edit3, PiggyBank, Plus, ListFilter, Filter
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
@@ -45,16 +43,20 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('*')
-      .order('date', { ascending: false })
-      .order('sequence', { ascending: false })
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('date', { ascending: false })
+        .order('sequence', { ascending: false })
 
-    if (!error && data) {
-      setTransactions(data)
+      if (error) throw error
+      if (data) setTransactions(data)
+    } catch (err) {
+      console.error('Error fetching:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   useEffect(() => {
@@ -62,7 +64,6 @@ export default function Dashboard() {
   }, [])
 
   const handleDelete = async (id: string) => {
-    console.log('Attempting to delete transaction:', id)
     if (!confirm('Tem certeza que deseja excluir esta transação?')) return
 
     try {
@@ -70,23 +71,18 @@ export default function Dashboard() {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
       })
-      console.log('Delete response status:', res.status)
       const result = await res.json()
-      console.log('Delete response result:', result)
-      
       if (result.success) {
-        fetchData()
+        await fetchData()
       } else {
         alert(result.error || 'Erro ao excluir.')
       }
     } catch (err) {
-      console.error('Delete fetch error:', err)
       alert('Erro na requisição')
     }
   }
 
   const handleEdit = async (transaction: Transaction) => {
-    console.log('Attempting to edit transaction:', transaction.id)
     const newDesc = prompt('Nova descrição:', transaction.description)
     if (newDesc === null) return
     const newAmountStr = prompt('Novo valor (use ponto para decimal):', transaction.amount.toString())
@@ -96,7 +92,6 @@ export default function Dashboard() {
     if (newCat === null) return
 
     try {
-      console.log('Sending PATCH request with:', { description: newDesc, amount: newAmount, category: newCat })
       const res = await fetch(`/api/transactions/${transaction.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -106,17 +101,13 @@ export default function Dashboard() {
           category: newCat
         }),
       })
-      console.log('Edit response status:', res.status)
       const result = await res.json()
-      console.log('Edit response result:', result)
-
       if (result.success) {
-        fetchData()
+        await fetchData()
       } else {
         alert(result.error || 'Erro ao editar.')
       }
     } catch (err) {
-      console.error('Edit fetch error:', err)
       alert('Erro na requisição')
     }
   }
@@ -124,27 +115,28 @@ export default function Dashboard() {
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    const { error } = await supabase.from('transactions').insert({
-      description: manualDesc,
-      amount: parseFloat(manualAmount),
-      category: manualCat,
-      type: manualType,
-      date: manualDate,
-      operation_id: 'MANUAL-' + Date.now(),
-      sequence: 999
-    })
+    try {
+      const { error } = await supabase.from('transactions').insert({
+        description: manualDesc,
+        amount: parseFloat(manualAmount),
+        category: manualCat,
+        type: manualType,
+        date: manualDate,
+        operation_id: 'MANUAL-' + Date.now(),
+        sequence: 999
+      })
 
-    if (error) {
-      alert('Erro ao gravar: ' + error.message)
-    } else {
+      if (error) throw error
+      
       alert('Lançamento gravado com sucesso!')
       setManualDesc('')
       setManualAmount('')
-      fetchData()
+      await fetchData()
+    } catch (err: any) {
+      alert('Erro ao gravar: ' + err.message)
     }
   }
 
-  // Periods calculation
   const periods = useMemo(() => {
     const set = new Set<string>()
     transactions.forEach(t => {
@@ -158,7 +150,6 @@ export default function Dashboard() {
     return Array.from(set).sort().reverse()
   }, [transactions, activeTab])
 
-  // Filtering Logic
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -180,7 +171,6 @@ export default function Dashboard() {
     })
   }, [transactions, searchTerm, selectedPeriod, activeTab])
 
-  // Stats recalculated
   const stats = useMemo(() => {
     const targetSet = (activeTab === 'overview' || activeTab === 'caixinhas' || activeTab === 'manual') ? transactions : filteredTransactions
 
@@ -286,9 +276,12 @@ export default function Dashboard() {
       .filter(c => c.value !== 0)
   }, [transactions])
 
+  if (loading && transactions.length === 0) {
+    return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 text-blue-600 font-bold">Carregando dados...</div>
+  }
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 flex">
-      {/* Sidebar Fixa */}
       <aside className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 p-6 flex flex-col z-50">
         <div className="mb-8">
           <h1 className="text-xl font-bold text-blue-600">D.A. 2026</h1>
@@ -327,14 +320,17 @@ export default function Dashboard() {
           <input type="file" ref={fileInputRef} onChange={async (e) => {
              const files = e.target.files; if (!files) return;
              setUploading(true); const fd = new FormData(); for(let i=0; i<files.length; i++) fd.append('files', files[i]);
-             const res = await fetch('/api/upload-pdf', { method: 'POST', body: fd });
-             if((await res.json()).success) { alert('PDF processado com sucesso!'); fetchData(); }
+             try {
+               const res = await fetch('/api/upload-pdf', { method: 'POST', body: fd });
+               const result = await res.json();
+               if(result.success) { alert('PDF processado com sucesso!'); await fetchData(); }
+               else alert('Erro: ' + result.error)
+             } catch(err) { alert('Erro no upload') }
              setUploading(false);
           }} multiple accept=".pdf" className="hidden" />
         </div>
       </aside>
 
-      {/* Área de Conteúdo principal com margin-left para não ficar sob a sidebar */}
       <main className="flex-1 ml-64 p-4 md:p-10 overflow-auto">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
@@ -363,7 +359,6 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* Cards de Saldo - Sempre Visíveis */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
           <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Cofre Inicial</p>
@@ -410,22 +405,18 @@ export default function Dashboard() {
           )}
 
           {activeTab === 'caixinhas' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {caixinhasData.map(c => (
-                    <div key={c.name} className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-bold text-zinc-400 uppercase mb-1">{c.name}</p>
-                        <p className="text-xl font-black text-zinc-800 dark:text-zinc-100 tabular-nums">{formatCurrency(c.value)}</p>
-                      </div>
-                      <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-2xl text-amber-600">
-                        <PiggyBank size={24} />
-                      </div>
-                    </div>
-                  ))}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {caixinhasData.map(c => (
+                <div key={c.name} className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-zinc-400 uppercase mb-1">{c.name}</p>
+                    <p className="text-xl font-black text-zinc-800 dark:text-zinc-100 tabular-nums">{formatCurrency(c.value)}</p>
+                  </div>
+                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-2xl text-amber-600">
+                    <PiggyBank size={24} />
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
           )}
 
@@ -472,7 +463,7 @@ export default function Dashboard() {
           {(activeTab === 'extrato' || activeTab === 'quarterly' || activeTab === 'annual') && (
             <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm overflow-hidden">
               <div className="p-6 flex items-center justify-between border-b border-zinc-50 dark:border-zinc-800">
-                <div className="relative w-full max-w-sm">
+                <div className="relative w-full max-sm">
                   <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input type="text" placeholder="Filtrar por nome ou categoria..." className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-2xl pl-12 pr-6 py-3 text-sm outline-none ring-1 ring-zinc-200 dark:ring-zinc-700 focus:ring-2 focus:ring-blue-500 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
@@ -512,12 +503,12 @@ export default function Dashboard() {
                         <td className={`px-8 py-5 text-right font-black text-base tabular-nums ${t.amount > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                           {formatCurrency(t.amount)}
                         </td>
-                        <td className="px-8 py-5">
+                        <td className="px-8 py-5 text-center">
                           <div className="flex items-center justify-center gap-2">
-                            <button onClick={() => handleEdit(t)} className="p-2 text-zinc-400 hover:text-blue-600 transition-colors">
+                            <button onClick={() => handleEdit(t)} className="p-2 text-zinc-400 hover:text-blue-600 transition-colors bg-zinc-50 dark:bg-zinc-800 rounded-lg">
                               <Edit3 size={16} />
                             </button>
-                            <button onClick={() => handleDelete(t.id)} className="p-2 text-zinc-400 hover:text-rose-600 transition-colors">
+                            <button onClick={() => handleDelete(t.id)} className="p-2 text-zinc-400 hover:text-rose-600 transition-colors bg-zinc-50 dark:bg-zinc-800 rounded-lg">
                               <Trash2 size={16} />
                             </button>
                           </div>
