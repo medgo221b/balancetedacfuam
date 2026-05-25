@@ -62,6 +62,7 @@ export default function Dashboard() {
   }, [])
 
   const handleDelete = async (id: string) => {
+    console.log('Attempting to delete transaction:', id)
     if (!confirm('Tem certeza que deseja excluir esta transação?')) return
 
     try {
@@ -69,18 +70,23 @@ export default function Dashboard() {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
       })
+      console.log('Delete response status:', res.status)
       const result = await res.json()
+      console.log('Delete response result:', result)
+      
       if (result.success) {
         fetchData()
       } else {
         alert(result.error || 'Erro ao excluir.')
       }
     } catch (err) {
+      console.error('Delete fetch error:', err)
       alert('Erro na requisição')
     }
   }
 
   const handleEdit = async (transaction: Transaction) => {
+    console.log('Attempting to edit transaction:', transaction.id)
     const newDesc = prompt('Nova descrição:', transaction.description)
     if (newDesc === null) return
     const newAmountStr = prompt('Novo valor (use ponto para decimal):', transaction.amount.toString())
@@ -90,6 +96,7 @@ export default function Dashboard() {
     if (newCat === null) return
 
     try {
+      console.log('Sending PATCH request with:', { description: newDesc, amount: newAmount, category: newCat })
       const res = await fetch(`/api/transactions/${transaction.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -99,13 +106,17 @@ export default function Dashboard() {
           category: newCat
         }),
       })
+      console.log('Edit response status:', res.status)
       const result = await res.json()
+      console.log('Edit response result:', result)
+
       if (result.success) {
         fetchData()
       } else {
         alert(result.error || 'Erro ao editar.')
       }
     } catch (err) {
+      console.error('Edit fetch error:', err)
       alert('Erro na requisição')
     }
   }
