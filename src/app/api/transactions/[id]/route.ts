@@ -7,12 +7,6 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const { password } = await request.json()
-    const adminPassword = process.env.ADMIN_PASSWORD
-
-    if (!adminPassword || password !== adminPassword) {
-      return NextResponse.json({ error: 'Senha administrativa incorreta' }, { status: 401 })
-    }
 
     const { error } = await supabase
       .from('transactions')
@@ -33,12 +27,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    const { password, ...updates } = await request.json()
-    const adminPassword = process.env.ADMIN_PASSWORD
-
-    if (!adminPassword || password !== adminPassword) {
-      return NextResponse.json({ error: 'Senha administrativa incorreta' }, { status: 401 })
-    }
+    const updates = await request.json()
 
     const { error } = await supabase
       .from('transactions')
@@ -52,3 +41,4 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
+

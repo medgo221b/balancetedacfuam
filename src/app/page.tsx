@@ -8,7 +8,7 @@ import {
 import { 
   Upload, Search, Filter, ArrowUpCircle, ArrowDownCircle, 
   Wallet, Download, Calendar, LayoutDashboard, FileText, 
-  Lock, Unlock, Trash2, Edit3, PiggyBank, ArrowRightLeft, Plus,
+  Trash2, Edit3, PiggyBank, ArrowRightLeft, Plus,
   ListFilter
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
@@ -34,8 +34,6 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<ViewType>('overview')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all')
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [adminPassword, setAdminPassword] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Manual Entry Form State
@@ -63,34 +61,19 @@ export default function Dashboard() {
     fetchData()
   }, [])
 
-  const handleToggleAdmin = () => {
-    if (isAdmin) {
-      setIsAdmin(false)
-      setAdminPassword('')
-    } else {
-      const pass = prompt('Digite a senha administrativa:')
-      if (pass) {
-        setIsAdmin(true)
-        setAdminPassword(pass)
-      }
-    }
-  }
-
   const handleDelete = async (id: string) => {
-    if (!isAdmin) return alert('Ative o modo Admin primeiro')
     if (!confirm('Tem certeza que deseja excluir esta transação?')) return
 
     try {
       const res = await fetch(`/api/transactions/${id}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: adminPassword }),
+        headers: { 'Content-Type': 'application/json' }
       })
       const result = await res.json()
       if (result.success) {
         fetchData()
       } else {
-        alert(result.error || 'Erro ao excluir. Verifique a senha.')
+        alert(result.error || 'Erro ao excluir.')
       }
     } catch (err) {
       alert('Erro na requisição')
@@ -98,7 +81,6 @@ export default function Dashboard() {
   }
 
   const handleEdit = async (transaction: Transaction) => {
-    if (!isAdmin) return alert('Ative o modo Admin primeiro')
     const newDesc = prompt('Nova descrição:', transaction.description)
     if (newDesc === null) return
     const newAmountStr = prompt('Novo valor (use ponto para decimal):', transaction.amount.toString())
@@ -112,7 +94,6 @@ export default function Dashboard() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          password: adminPassword,
           description: newDesc,
           amount: newAmount,
           category: newCat
@@ -122,7 +103,7 @@ export default function Dashboard() {
       if (result.success) {
         fetchData()
       } else {
-        alert(result.error || 'Erro ao editar. Verifique a senha.')
+        alert(result.error || 'Erro ao editar.')
       }
     } catch (err) {
       alert('Erro na requisição')
@@ -131,7 +112,6 @@ export default function Dashboard() {
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isAdmin) return alert('Ative o acesso Admin para gravar lançamentos.')
     
     const { error } = await supabase.from('transactions').insert({
       description: manualDesc,
@@ -146,7 +126,7 @@ export default function Dashboard() {
     if (error) {
       alert('Erro ao gravar: ' + error.message)
     } else {
-      alert('Lançamento gravado no banco de dados com sucesso!')
+      alert('Lançamento gravado com sucesso!')
       setManualDesc('')
       setManualAmount('')
       fetchData()
@@ -330,11 +310,6 @@ export default function Dashboard() {
         </nav>
 
         <div className="mt-auto space-y-3 pt-6 border-t border-zinc-100 dark:border-zinc-800">
-          <button onClick={handleToggleAdmin} className={`w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all border ${isAdmin ? 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/20 dark:border-amber-800' : 'bg-zinc-50 border-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:border-zinc-700'}`}>
-            {isAdmin ? <Unlock size={14} /> : <Lock size={14} />}
-            {isAdmin ? 'Admin Ativado' : 'Acesso Admin'}
-          </button>
-
           <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20">
             <Upload size={18} /> {uploading ? 'Aguarde...' : 'Subir PDF'}
           </button>
@@ -446,7 +421,6 @@ export default function Dashboard() {
           {activeTab === 'manual' && (
             <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm max-w-2xl">
               <h3 className="font-bold text-lg mb-6 flex items-center gap-2"><Plus className="text-blue-600"/> Novo Lançamento Manual</h3>
-              {!isAdmin && <div className="bg-amber-50 border border-amber-200 text-amber-700 p-4 rounded-xl text-sm mb-6 font-medium">⚠️ Ative o Acesso Admin para poder gravar lançamentos no banco de dados.</div>}
               <form onSubmit={handleManualSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
@@ -477,7 +451,7 @@ export default function Dashboard() {
                     </select>
                   </div>
                 </div>
-                <button type="submit" disabled={!isAdmin} className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl hover:bg-blue-700 disabled:opacity-50 transition-all shadow-lg shadow-blue-500/20 mt-4">
+                <button type="submit" className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 mt-4">
                   Gravar no Banco de Dados
                 </button>
               </form>
@@ -501,7 +475,7 @@ export default function Dashboard() {
                       <th className="px-8 py-5">Descrição</th>
                       <th className="px-8 py-5">Categoria</th>
                       <th className="px-8 py-5 text-right">Valor</th>
-                      {isAdmin && <th className="px-8 py-5 text-center">Ações</th>}
+                      <th className="px-8 py-5 text-center">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
@@ -527,18 +501,16 @@ export default function Dashboard() {
                         <td className={`px-8 py-5 text-right font-black text-base tabular-nums ${t.amount > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                           {formatCurrency(t.amount)}
                         </td>
-                        {isAdmin && (
-                          <td className="px-8 py-5">
-                            <div className="flex items-center justify-center gap-2">
-                              <button onClick={() => handleEdit(t)} className="p-2 text-zinc-400 hover:text-blue-600 transition-colors">
-                                <Edit3 size={16} />
-                              </button>
-                              <button onClick={() => handleDelete(t.id)} className="p-2 text-zinc-400 hover:text-rose-600 transition-colors">
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        )}
+                        <td className="px-8 py-5">
+                          <div className="flex items-center justify-center gap-2">
+                            <button onClick={() => handleEdit(t)} className="p-2 text-zinc-400 hover:text-blue-600 transition-colors">
+                              <Edit3 size={16} />
+                            </button>
+                            <button onClick={() => handleDelete(t.id)} className="p-2 text-zinc-400 hover:text-rose-600 transition-colors">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
