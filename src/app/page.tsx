@@ -267,9 +267,13 @@ export default function Dashboard() {
       return acc
     }, [])
     return data.sort((a,b) => {
-        const [mA, yA] = a.name.split('/')
-        const [mB, yB] = b.name.split('/')
-        return new Date(2000 + parseInt(yA), 1).getTime() - new Date(2000 + parseInt(yB), 1).getTime()
+        const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+        const [mA, yA] = a.name.split(' ')
+        const [mB, yB] = b.name.split(' ')
+        const yearA = parseInt(yA)
+        const yearB = parseInt(yB)
+        if (yearA !== yearB) return yearA - yearB
+        return months.indexOf(mA.toLowerCase()) - months.indexOf(mB.toLowerCase())
     })
   }, [transactions])
 
