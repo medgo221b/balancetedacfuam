@@ -72,17 +72,22 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' }
       })
       const result = await res.json()
+      console.log('Delete response result:', result)
+      
       if (result.success) {
-        await fetchData()
+        alert('Item excluído com sucesso!')
+        fetchData()
       } else {
-        alert(result.error || 'Erro ao excluir.')
+        alert(result.error || 'Erro ao excluir no banco de dados. Verifique o RLS no Supabase.')
       }
     } catch (err) {
-      alert('Erro na requisição')
+      console.error('Delete fetch error:', err)
+      alert('Erro de conexão ou erro no servidor.')
     }
   }
 
   const handleEdit = async (transaction: Transaction) => {
+    console.log('Attempting to edit transaction:', transaction.id)
     const newDesc = prompt('Nova descrição:', transaction.description)
     if (newDesc === null) return
     const newAmountStr = prompt('Novo valor (use ponto para decimal):', transaction.amount.toString())
@@ -92,6 +97,7 @@ export default function Dashboard() {
     if (newCat === null) return
 
     try {
+      console.log('Sending PATCH request with:', { description: newDesc, amount: newAmount, category: newCat })
       const res = await fetch(`/api/transactions/${transaction.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -101,14 +107,19 @@ export default function Dashboard() {
           category: newCat
         }),
       })
+      console.log('Edit response status:', res.status)
       const result = await res.json()
+      console.log('Edit response result:', result)
+
       if (result.success) {
-        await fetchData()
+        alert('Item atualizado com sucesso!')
+        fetchData()
       } else {
-        alert(result.error || 'Erro ao editar.')
+        alert(result.error || 'Erro ao editar no banco de dados. Verifique o RLS no Supabase.')
       }
     } catch (err) {
-      alert('Erro na requisição')
+      console.error('Edit fetch error:', err)
+      alert('Erro de conexão ou erro no servidor.')
     }
   }
 
