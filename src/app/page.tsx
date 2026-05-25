@@ -183,7 +183,10 @@ export default function Dashboard() {
   }, [transactions, searchTerm, selectedPeriod, activeTab])
 
   const stats = useMemo(() => {
-    const targetSet = (activeTab === 'overview' || activeTab === 'caixinhas' || activeTab === 'manual') ? transactions : filteredTransactions
+    // Para o Panorama Geral (Overview), Caixinhas e Manual, SEMPRE usamos o histórico completo (transactions)
+    // Para abas de relatório (Extrato, Trimestral, Anual), usamos o set filtrado
+    const isReportTab = ['extrato', 'quarterly', 'annual'].includes(activeTab)
+    const targetSet = (isReportTab && selectedPeriod !== 'all') ? filteredTransactions : transactions
 
     const initialBalance = targetSet
       .filter(t => t.category.includes('Saldo Inicial'))
@@ -202,12 +205,11 @@ export default function Dashboard() {
       .reduce((acc, t) => acc + t.amount, 0)
 
     let cumulativeBalance = 0
-    if (activeTab === 'overview' || activeTab === 'caixinhas' || activeTab === 'manual' || selectedPeriod === 'all') {
-      cumulativeBalance = transactions.reduce((acc, t) => {
-        if (t.type === 'transaction' || t.type === 'rendimento') return acc + t.amount
-        return acc
-      }, 0)
+    // O Saldo Real deve ser a soma de ABSOLUTAMENTE TUDO no banco até aquele momento
+    if (!isReportTab || selectedPeriod === 'all') {
+      cumulativeBalance = transactions.reduce((acc, t) => acc + t.amount, 0)
     } else {
+      // Se estamos num relatório, somamos tudo até o fim do período selecionado
       const periodTransactions = transactions.filter(t => {
         const d = new Date(t.date)
         const y = d.getUTCFullYear().toString()
@@ -219,10 +221,7 @@ export default function Dashboard() {
         }
         return y <= selectedPeriod
       })
-      cumulativeBalance = periodTransactions.reduce((acc, t) => {
-        if (t.type === 'transaction' || t.type === 'rendimento') return acc + t.amount
-        return acc
-      }, 0)
+      cumulativeBalance = periodTransactions.reduce((acc, t) => acc + t.amount, 0)
     }
 
     return { 
