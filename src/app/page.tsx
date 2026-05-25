@@ -254,27 +254,25 @@ export default function Dashboard() {
   }
 
   const monthlyGrowthData = useMemo(() => {
-    const data = transactions.reduce((acc: any[], t) => {
-      if (t.type !== 'transaction' && t.type !== 'rendimento') return acc
+    const dataMap: Record<string, { name: string, total: number, sortKey: string }> = {}
+    
+    transactions.forEach(t => {
+      if (t.type !== 'transaction' && t.type !== 'rendimento') return
       const d = new Date(t.date)
-      const m = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit', timeZone: 'UTC' })
-      let entry = acc.find(x => x.name === m)
-      if (!entry) {
-        entry = { name: m, total: 0 }
-        acc.push(entry)
+      // Key for grouping: "Jan 26"
+      const label = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit', timeZone: 'UTC' })
+      // Key for sorting: "2026-01"
+      const sortKey = `${d.getUTCFullYear()}-${(d.getUTCMonth() + 1).toString().padStart(2, '0')}`
+      
+      if (!dataMap[sortKey]) {
+        dataMap[sortKey] = { name: label, total: 0, sortKey }
       }
-      entry.total = Number((entry.total + t.amount).toFixed(2))
-      return acc
-    }, [])
-    return data.sort((a,b) => {
-        const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
-        const [mA, yA] = a.name.split(' ')
-        const [mB, yB] = b.name.split(' ')
-        const yearA = parseInt(yA)
-        const yearB = parseInt(yB)
-        if (yearA !== yearB) return yearA - yearB
-        return months.indexOf(mA.toLowerCase()) - months.indexOf(mB.toLowerCase())
+      dataMap[sortKey].total = Number((dataMap[sortKey].total + t.amount).toFixed(2))
     })
+    
+    const sorted = Object.values(dataMap).sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+    console.log('Sorted Chart Data:', sorted)
+    return sorted
   }, [transactions])
 
   const caixinhasData = useMemo(() => {
