@@ -4,7 +4,10 @@ import { supabase } from '@/lib/supabaseClient'
 
 const pdf = require('pdf-parse-fork')
 
+export const runtime = 'nodejs'; 
+
 export async function POST(request: Request) {
+
   try {
     const formData = await request.formData()
     const files = formData.getAll('files') as File[]
