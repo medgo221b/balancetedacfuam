@@ -3,9 +3,10 @@ import { supabase } from '@/lib/supabaseClient'
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const { password } = await request.json()
     const adminPassword = process.env.ADMIN_PASSWORD
 
@@ -16,7 +17,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('transactions')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) throw error
 
@@ -28,9 +29,10 @@ export async function DELETE(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const { password, ...updates } = await request.json()
     const adminPassword = process.env.ADMIN_PASSWORD
 
@@ -41,7 +43,7 @@ export async function PATCH(
     const { error } = await supabase
       .from('transactions')
       .update(updates)
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) throw error
 
